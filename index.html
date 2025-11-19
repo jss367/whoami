@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>whoami: What your browser reveals</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>whoami</h1>
+    <p>A quick tour of the information your browser and network share with this page.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Network identity</h2>
+      <div class="grid">
+        <div class="card"><h3>IP address</h3><p id="ip" class="value">Loading…</p></div>
+        <div class="card"><h3>Approximate location (from IP)</h3><p id="ip-location" class="value">Loading…</p></div>
+        <div class="card"><h3>ISP/ASN</h3><p id="asn" class="value">Loading…</p></div>
+        <div class="card"><h3>Hostname</h3><p id="hostname" class="value">Loading…</p></div>
+      </div>
+      <p class="note">IP-based data uses the free <a href="https://ipapi.co/" target="_blank" rel="noopener noreferrer">ipapi</a> service. Accuracy varies.</p>
+    </section>
+
+    <section>
+      <h2>Browser &amp; device</h2>
+      <div class="grid">
+        <div class="card"><h3>User agent</h3><p id="user-agent" class="value"></p></div>
+        <div class="card"><h3>Platform</h3><p id="platform" class="value"></p></div>
+        <div class="card"><h3>Languages</h3><p id="languages" class="value"></p></div>
+        <div class="card"><h3>Do Not Track</h3><p id="dnt" class="value"></p></div>
+        <div class="card"><h3>Cookies enabled</h3><p id="cookies" class="value"></p></div>
+        <div class="card"><h3>Hardware concurrency</h3><p id="cores" class="value"></p></div>
+        <div class="card"><h3>Memory estimate</h3><p id="memory" class="value"></p></div>
+        <div class="card"><h3>Touch support</h3><p id="touch" class="value"></p></div>
+        <div class="card"><h3>WebDriver detected</h3><p id="webdriver" class="value"></p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Screen &amp; rendering</h2>
+      <div class="grid">
+        <div class="card"><h3>Screen resolution</h3><p id="screen" class="value"></p></div>
+        <div class="card"><h3>Viewport</h3><p id="viewport" class="value"></p></div>
+        <div class="card"><h3>Pixel ratio</h3><p id="pixel-ratio" class="value"></p></div>
+        <div class="card"><h3>Color depth</h3><p id="color-depth" class="value"></p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Location (browser API)</h2>
+      <p>This uses the browser's geolocation prompt when available.</p>
+      <div class="grid">
+        <div class="card"><h3>Status</h3><p id="geo-status" class="value">Waiting for permission…</p></div>
+        <div class="card"><h3>Coordinates</h3><p id="geo-coords" class="value">—</p></div>
+        <div class="card"><h3>Accuracy</h3><p id="geo-accuracy" class="value">—</p></div>
+        <div class="card"><h3>Altitude</h3><p id="geo-altitude" class="value">—</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Time &amp; environment</h2>
+      <div class="grid">
+        <div class="card"><h3>Local time</h3><p id="local-time" class="value"></p></div>
+        <div class="card"><h3>Timezone</h3><p id="timezone" class="value"></p></div>
+        <div class="card"><h3>Referrer</h3><p id="referrer" class="value"></p></div>
+        <div class="card"><h3>Page URL</h3><p id="page-url" class="value"></p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Network &amp; battery (experimental)</h2>
+      <div class="grid">
+        <div class="card"><h3>Connection</h3><p id="connection" class="value"></p></div>
+        <div class="card"><h3>Battery</h3><p id="battery" class="value">Checking…</p></div>
+      </div>
+      <p class="note">Some browsers block these APIs or provide partial data for privacy.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built for GitHub Pages to demonstrate what the web can learn about you.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
