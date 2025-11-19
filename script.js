@@ -190,6 +190,40 @@ const loadTimeData = () => {
   setValue('page-url', window.location.href);
 };
 
+const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
+const setCookie = (name, value, maxAgeSeconds) => {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; samesite=Lax`;
+};
+
+const loadVisitData = () => {
+  if (!navigator.cookieEnabled) {
+    setValue('visit-count', 'Cookies disabled');
+    setValue('last-visit', 'Cookies disabled');
+    return;
+  }
+
+  const COOKIE_NAME = 'whoami_visit';
+  const MAX_AGE = 60 * 60 * 24 * 365; // one year
+  const existing = getCookie(COOKIE_NAME);
+  const now = new Date();
+
+  try {
+    const parsed = existing ? JSON.parse(existing) : { count: 0, last: null };
+    const nextData = { count: parsed.count + 1, last: now.toISOString() };
+    setCookie(COOKIE_NAME, JSON.stringify(nextData), MAX_AGE);
+
+    setValue('visit-count', `${nextData.count} time${nextData.count === 1 ? '' : 's'}`);
+    setValue('last-visit', parsed.last ? new Date(parsed.last).toLocaleString() : 'This is your first visit');
+  } catch (error) {
+    setValue('visit-count', 'Unable to read visit data');
+    setValue('last-visit', 'Try reloading the page');
+  }
+};
+
 const loadConnectionData = () => {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   if (connection) {
@@ -257,6 +291,7 @@ const init = async () => {
   await loadBrowserData();
   loadScreenData();
   loadTimeData();
+  loadVisitData();
   loadConnectionData();
   loadBatteryData();
   loadGeolocation();
