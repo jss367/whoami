@@ -20,6 +20,22 @@
         <div class="card"><h3>Approximate location (from IP)</h3><p id="ip-location" class="value">Loading…</p></div>
         <div class="card"><h3>ISP/ASN</h3><p id="asn" class="value">Loading…</p></div>
         <div class="card"><h3>Hostname</h3><p id="hostname" class="value">Loading…</p></div>
+        <div class="card card-action">
+          <div class="card-header">
+            <h3>Latency check</h3>
+            <button id="latency-refresh" type="button">Re-run</button>
+          </div>
+          <p id="latency" class="value">Measuring…</p>
+          <p class="note">Round-trip to this page. Numbers vary with your connection.</p>
+        </div>
+        <div class="card card-action">
+          <div class="card-header">
+            <h3>WebRTC local IP leak</h3>
+            <button id="webrtc-run" type="button">Run check</button>
+          </div>
+          <p id="webrtc-ip" class="value">Not tested yet.</p>
+          <p class="note">Opt-in test; results stay in your browser.</p>
+        </div>
       </div>
       <p class="note">IP-based data uses the free <a href="https://ipapi.co/" target="_blank" rel="noopener noreferrer">ipapi</a> service. Accuracy varies.</p>
     </section>
@@ -36,7 +52,18 @@
         <div class="card"><h3>Memory estimate</h3><p id="memory" class="value"></p></div>
         <div class="card"><h3>Touch support</h3><p id="touch" class="value"></p></div>
         <div class="card"><h3>WebDriver detected</h3><p id="webdriver" class="value"></p></div>
+        <div class="card"><h3>Performance snapshot</h3><p id="performance" class="value">Measuring…</p><p class="note">Render + IP lookup timing based on this session.</p></div>
       </div>
+    </section>
+
+    <section aria-labelledby="privacy-tips-heading">
+      <h2 id="privacy-tips-heading">Privacy tips &amp; mitigations</h2>
+      <ul class="tips-list">
+        <li>Use a trusted VPN or privacy proxy to mask your IP, ASN, and geolocation.</li>
+        <li>Disable third-party cookies and limit cross-site tracking protections in your browser settings.</li>
+        <li>Turn off WebRTC or restrict local IP sharing in your browser to reduce leak surface.</li>
+        <li>Use privacy-focused extensions that block fingerprinting scripts and limit hardware disclosures.</li>
+      </ul>
     </section>
 
     <section>

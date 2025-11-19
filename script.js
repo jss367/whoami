@@ -15,6 +15,7 @@ const formatLocation = (data) => {
 };
 
 const loadIpData = async () => {
+  const start = performance.now();
   try {
     const response = await fetch('https://ipapi.co/json/');
     if (!response.ok) throw new Error('IP lookup failed');
@@ -28,9 +29,116 @@ const loadIpData = async () => {
     setValue('ip-location', 'Unable to fetch IP-based location');
     setValue('asn', 'Unavailable');
     setValue('hostname', 'Unavailable');
+  } finally {
+    return Math.round(performance.now() - start);
   }
 };
 
+const measureLatency = async () => {
+  const button = document.getElementById('latency-refresh');
+  if (button) button.disabled = true;
+  setValue('latency', 'Measuring…');
+  const url = window.location.href.split('#')[0];
+  const target = `${url}${url.includes('?') ? '&' : '?'}ping=${Date.now()}`;
+  const start = performance.now();
+
+  try {
+    await fetch(target, { method: 'GET', cache: 'no-store', mode: 'cors' });
+    const duration = Math.round(performance.now() - start);
+    setValue('latency', `${duration} ms (page fetch)`);
+  } catch (error) {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.rtt) {
+      setValue('latency', `Estimated ${connection.rtt} ms (network API)`);
+    } else {
+      setValue('latency', 'Unable to measure (blocked by network or CORS)');
+    }
+  }
+
+  if (button) button.disabled = false;
+};
+
+const runWebRTCTest = async () => {
+  if (!window.RTCPeerConnection) {
+    setValue('webrtc-ip', 'WebRTC not supported in this browser');
+    return;
+  }
+
+  setValue('webrtc-ip', 'Gathering ICE candidates…');
+
+  const ips = new Set();
+  let resolved = false;
+
+  const done = (message) => {
+    if (resolved) return;
+    resolved = true;
+    setValue('webrtc-ip', message);
+  };
+
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    pc.createDataChannel('whoami-local');
+
+    pc.onicecandidate = (event) => {
+      if (!event.candidate) {
+        if (ips.size === 0) {
+          done('No local IPs exposed via WebRTC');
+        } else {
+          done(`Local IPs: ${Array.from(ips).join(', ')}`);
+        }
+        pc.close();
+        return;
+      }
+
+      const parts = event.candidate.candidate.split(' ');
+      const ip = parts[4];
+      if (ip) {
+        ips.add(ip);
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    setTimeout(() => {
+      if (resolved) return;
+      pc.close();
+      done(ips.size ? `Local IPs: ${Array.from(ips).join(', ')}` : 'Timed out without revealing local IPs');
+    }, 5000);
+  } catch (error) {
+    done('WebRTC test failed or was blocked');
+  }
+};
+
+const setupWebRTCTest = () => {
+  const button = document.getElementById('webrtc-run');
+  if (!button) return;
+
+  if (!window.RTCPeerConnection) {
+    setValue('webrtc-ip', 'WebRTC not supported in this browser');
+    button.disabled = true;
+    return;
+  }
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = 'Testing…';
+    await runWebRTCTest();
+    button.disabled = false;
+    button.textContent = originalText;
+  });
+};
+
+const setupLatencyRefresh = () => {
+  const button = document.getElementById('latency-refresh');
+  if (!button) return;
+  button.addEventListener('click', () => measureLatency());
+};
+
+const loadBrowserData = () => {
+  setValue('user-agent', navigator.userAgent);
+  setValue('platform', navigator.platform || 'Unknown');
 const loadBrowserData = async () => {
   const ua = navigator.userAgent;
   let uaBrands = '';
@@ -98,6 +206,14 @@ const loadConnectionData = () => {
   }
 };
 
+const updatePerformanceData = (renderTime, ipLookupDuration) => {
+  const parts = [`Render ready in ${renderTime} ms`];
+  if (typeof ipLookupDuration === 'number' && !Number.isNaN(ipLookupDuration)) {
+    parts.push(`IP lookup in ${ipLookupDuration} ms`);
+  }
+  setValue('performance', parts.join(' • '));
+};
+
 const loadBatteryData = async () => {
   if (!navigator.getBattery) {
     setValue('battery', 'Battery information not exposed');
@@ -138,14 +254,21 @@ const loadGeolocation = () => {
   }, { enableHighAccuracy: true, timeout: 10000 });
 };
 
-const init = () => {
-  loadIpData();
+const init = async () => {
+  const renderTime = Math.round(performance.now());
+  const ipLookup = loadIpData();
   loadBrowserData();
   loadScreenData();
   loadTimeData();
   loadConnectionData();
   loadBatteryData();
   loadGeolocation();
+  measureLatency();
+  setupLatencyRefresh();
+  setupWebRTCTest();
+
+  const ipDuration = await ipLookup;
+  updatePerformanceData(renderTime, ipDuration);
 };
 
 document.addEventListener('DOMContentLoaded', init);
