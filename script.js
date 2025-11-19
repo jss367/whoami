@@ -136,9 +136,6 @@ const setupLatencyRefresh = () => {
   button.addEventListener('click', () => measureLatency());
 };
 
-const loadBrowserData = () => {
-  setValue('user-agent', navigator.userAgent);
-  setValue('platform', navigator.platform || 'Unknown');
 const loadBrowserData = async () => {
   const ua = navigator.userAgent;
   let uaBrands = '';
@@ -257,7 +254,7 @@ const loadGeolocation = () => {
 const init = async () => {
   const renderTime = Math.round(performance.now());
   const ipLookup = loadIpData();
-  loadBrowserData();
+  await loadBrowserData();
   loadScreenData();
   loadTimeData();
   loadConnectionData();
