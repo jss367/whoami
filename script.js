@@ -31,9 +31,36 @@ const loadIpData = async () => {
   }
 };
 
-const loadBrowserData = () => {
-  setValue('user-agent', navigator.userAgent);
-  setValue('platform', navigator.platform || 'Unknown');
+const loadBrowserData = async () => {
+  const ua = navigator.userAgent;
+  let uaBrands = '';
+
+  if (navigator.userAgentData?.brands) {
+    uaBrands = `\nBrands: ${navigator.userAgentData.brands.map((b) => `${b.brand} ${b.version}`).join(', ')}`;
+  }
+
+  setValue('user-agent', `${ua}${uaBrands}`.trim());
+
+  let platform = navigator.platform || 'Unknown';
+
+  if (navigator.userAgentData?.getHighEntropyValues) {
+    try {
+      const { architecture, bitness, platform: uaPlatform } = await navigator.userAgentData.getHighEntropyValues([
+        'architecture',
+        'bitness',
+        'platform'
+      ]);
+
+      const platformParts = [uaPlatform || platform];
+      if (architecture) platformParts.push(architecture);
+      if (bitness) platformParts.push(`${bitness}-bit`);
+      platform = platformParts.filter(Boolean).join(' ');
+    } catch (_) {
+      // Fall back to the classic platform string if high entropy hints are blocked
+    }
+  }
+
+  setValue('platform', platform);
   setValue('languages', formatList(navigator.languages || navigator.language));
   setValue('dnt', navigator.doNotTrack === '1' ? 'Enabled' : 'Disabled or not reported');
   setValue('cookies', navigator.cookieEnabled ? 'Yes' : 'No');
