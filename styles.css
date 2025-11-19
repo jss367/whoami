@@ -78,6 +78,19 @@ section p {
   font-size: 1rem;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.card-action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .value {
   margin: 0;
   font-size: 0.95rem;
@@ -95,6 +108,41 @@ a {
 
 a:hover {
   text-decoration: none;
+}
+
+button {
+  background: var(--accent);
+  color: #06232c;
+  border: none;
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 4px 12px rgba(77, 208, 225, 0.3);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.tips-list {
+  margin: 0.25rem 0 0;
+  color: var(--text);
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tips-list li {
+  line-height: 1.4;
 }
 
 footer {
