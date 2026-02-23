@@ -14,6 +14,12 @@ const formatLocation = (data) => {
   return filtered.length ? filtered.join(', ') : 'Unavailable';
 };
 
+const sha256 = async (message) => {
+  const data = new TextEncoder().encode(message);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 const loadIpData = async () => {
   const start = performance.now();
   try {
@@ -237,6 +243,184 @@ const loadConnectionData = () => {
   }
 };
 
+const loadCanvasFingerprint = async () => {
+  try {
+    const canvas = document.getElementById('canvas-fp');
+    if (!canvas) return 'unsupported';
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, 200, 40);
+    ctx.fillStyle = '#e04040';
+    ctx.font = '14px Arial';
+    ctx.fillText('whoami canvas 🚀', 2, 15);
+    ctx.fillStyle = 'rgba(0,80,200,0.7)';
+    ctx.beginPath();
+    ctx.arc(170, 20, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#30d050';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(50, 30);
+    ctx.bezierCurveTo(80, 5, 120, 35, 150, 10);
+    ctx.stroke();
+    const dataUrl = canvas.toDataURL();
+    const hash = await sha256(dataUrl);
+    setValue('canvas-hash', hash.slice(0, 16) + '…');
+    return hash;
+  } catch (e) {
+    setValue('canvas-hash', 'Blocked or unsupported');
+    return 'blocked';
+  }
+};
+
+const loadWebGLFingerprint = async () => {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) {
+      setValue('webgl-info', 'WebGL not supported');
+      return 'unsupported';
+    }
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'Unknown';
+    const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'Unknown';
+    const maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const maxViewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+    const extensions = gl.getSupportedExtensions() || [];
+    const summary = `${vendor} — ${renderer}\nMax texture: ${maxTexture}, Max viewport: ${maxViewport[0]}x${maxViewport[1]}\n${extensions.length} extensions supported`;
+    setValue('webgl-info', summary);
+    const raw = `${vendor}|${renderer}|${maxTexture}|${extensions.join(',')}`;
+    return await sha256(raw);
+  } catch (e) {
+    setValue('webgl-info', 'Blocked or unsupported');
+    return 'blocked';
+  }
+};
+
+const loadAudioFingerprint = async () => {
+  try {
+    const ctx = new OfflineAudioContext(1, 44100, 44100);
+    const oscillator = ctx.createOscillator();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(10000, ctx.currentTime);
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-50, ctx.currentTime);
+    compressor.knee.setValueAtTime(40, ctx.currentTime);
+    compressor.ratio.setValueAtTime(12, ctx.currentTime);
+    compressor.attack.setValueAtTime(0, ctx.currentTime);
+    compressor.release.setValueAtTime(0.25, ctx.currentTime);
+    oscillator.connect(compressor);
+    compressor.connect(ctx.destination);
+    oscillator.start(0);
+    const buffer = await ctx.startRendering();
+    const data = buffer.getChannelData(0);
+    const sample = data.slice(4500, 5000).reduce((a, b) => a + Math.abs(b), 0).toString();
+    const hash = await sha256(sample);
+    setValue('audio-hash', hash.slice(0, 16) + '…');
+    return hash;
+  } catch (e) {
+    setValue('audio-hash', 'Blocked or unsupported');
+    return 'blocked';
+  }
+};
+
+const loadFontDetection = async () => {
+  const testFonts = [
+    'Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Georgia',
+    'Impact', 'Lucida Console', 'Lucida Sans Unicode', 'Palatino Linotype',
+    'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Verdana', 'MS Gothic',
+    'MS PGothic', 'MS UI Gothic', 'Meiryo', 'Yu Gothic', 'Segoe UI',
+    'Consolas', 'Cambria', 'Calibri', 'Candara', 'Constantia',
+    'Helvetica', 'Helvetica Neue', 'Futura', 'Gill Sans', 'Optima',
+    'American Typewriter', 'Baskerville', 'Didot', 'Garamond',
+    'Monaco', 'Menlo', 'SF Pro', 'SF Mono', 'Avenir', 'Avenir Next',
+    'Ubuntu', 'DejaVu Sans', 'Liberation Sans', 'Noto Sans',
+    'Roboto', 'Droid Sans', 'Fira Sans', 'Source Sans Pro',
+    'Cascadia Code', 'JetBrains Mono', 'Inconsolata', 'Hack'
+  ];
+  const baseFonts = ['monospace', 'sans-serif', 'serif'];
+  const testString = 'mmmmmmmmmmlli';
+  const testSize = '72px';
+
+  const span = document.createElement('span');
+  span.style.position = 'absolute';
+  span.style.left = '-9999px';
+  span.style.fontSize = testSize;
+  span.style.lineHeight = 'normal';
+  span.textContent = testString;
+  document.body.appendChild(span);
+
+  const baseWidths = {};
+  for (const base of baseFonts) {
+    span.style.fontFamily = base;
+    baseWidths[base] = span.offsetWidth;
+  }
+
+  const detected = [];
+  for (const font of testFonts) {
+    let found = false;
+    for (const base of baseFonts) {
+      span.style.fontFamily = `'${font}', ${base}`;
+      if (span.offsetWidth !== baseWidths[base]) {
+        found = true;
+        break;
+      }
+    }
+    if (found) detected.push(font);
+  }
+
+  document.body.removeChild(span);
+  const label = detected.length ? `${detected.length} fonts: ${detected.join(', ')}` : 'No extra fonts detected';
+  setValue('fonts', label);
+  return await sha256(detected.join(','));
+};
+
+const loadSpeechVoices = () => {
+  return new Promise((resolve) => {
+    const getVoices = () => {
+      const voices = speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        setValue('voices', 'No voices available');
+        resolve('none');
+        return;
+      }
+      const names = voices.map(v => `${v.name} (${v.lang})`);
+      setValue('voices', `${voices.length} voices: ${names.join(', ')}`);
+      resolve(voices.map(v => v.name).join(','));
+    };
+
+    if (typeof speechSynthesis === 'undefined') {
+      setValue('voices', 'Speech synthesis not supported');
+      resolve('unsupported');
+      return;
+    }
+
+    const voices = speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      getVoices();
+    } else {
+      speechSynthesis.onvoiceschanged = getVoices;
+      setTimeout(() => {
+        if (speechSynthesis.getVoices().length === 0) {
+          setValue('voices', 'No voices loaded');
+          resolve('timeout');
+        }
+      }, 3000);
+    }
+  });
+};
+
+const loadPlugins = () => {
+  const plugins = Array.from(navigator.plugins || []);
+  if (plugins.length === 0) {
+    setValue('plugins', 'None reported (modern browsers hide this)');
+    return 'none';
+  }
+  const names = plugins.map(p => p.name);
+  setValue('plugins', `${names.length} plugins: ${names.join(', ')}`);
+  return names.join(',');
+};
+
 const updatePerformanceData = (renderTime, ipLookupDuration) => {
   const parts = [`Render ready in ${renderTime} ms`];
   if (typeof ipLookupDuration === 'number' && !Number.isNaN(ipLookupDuration)) {
@@ -285,19 +469,141 @@ const loadGeolocation = () => {
   }, { enableHighAccuracy: true, timeout: 10000 });
 };
 
+const loadCSSPreferences = () => {
+  const detect = (query, values) => {
+    for (const v of values) {
+      if (window.matchMedia(`(${query}: ${v})`).matches) return v;
+    }
+    return 'no-preference';
+  };
+  setValue('pref-color-scheme', detect('prefers-color-scheme', ['dark', 'light']));
+  setValue('pref-reduced-motion', detect('prefers-reduced-motion', ['reduce']));
+  setValue('pref-contrast', detect('prefers-contrast', ['more', 'less']));
+  setValue('pref-forced-colors', detect('forced-colors', ['active']));
+};
+
+const loadMediaDevices = async () => {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    setValue('media-devices', 'Not supported');
+    return;
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const counts = {};
+    for (const d of devices) {
+      counts[d.kind] = (counts[d.kind] || 0) + 1;
+    }
+    const parts = Object.entries(counts).map(([kind, count]) => `${kind}: ${count}`);
+    setValue('media-devices', parts.join(', ') || 'No devices found');
+  } catch (e) {
+    setValue('media-devices', 'Blocked');
+  }
+};
+
+const loadStorageEstimate = async () => {
+  if (!navigator.storage?.estimate) {
+    setValue('storage-estimate', 'Not supported');
+    return;
+  }
+  try {
+    const est = await navigator.storage.estimate();
+    const fmt = (bytes) => {
+      if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+      if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+      return `${bytes} bytes`;
+    };
+    setValue('storage-estimate', `Quota: ${fmt(est.quota)} • Used: ${fmt(est.usage)}`);
+  } catch (e) {
+    setValue('storage-estimate', 'Blocked');
+  }
+};
+
+const loadPermissionsStatus = async () => {
+  if (!navigator.permissions?.query) {
+    setValue('permissions', 'Permissions API not supported');
+    return;
+  }
+  const names = ['geolocation', 'notifications', 'camera', 'microphone', 'clipboard-read'];
+  const results = [];
+  for (const name of names) {
+    try {
+      const status = await navigator.permissions.query({ name });
+      results.push(`${name}: ${status.state}`);
+    } catch (e) {
+      results.push(`${name}: unsupported`);
+    }
+  }
+  setValue('permissions', results.join(' • '));
+};
+
+const loadFingerprintSummary = async (hashes) => {
+  const validHashes = Object.entries(hashes).filter(([, v]) => v && v !== 'blocked' && v !== 'unsupported' && v !== 'none' && v !== 'timeout');
+  const signalCount = validHashes.length;
+  setValue('fp-signals', `${signalCount} of ${Object.keys(hashes).length} signals`);
+
+  if (signalCount === 0) {
+    setValue('fp-hash', 'Unable to compute');
+    setValue('fp-uniqueness', 'Insufficient data');
+    return;
+  }
+
+  const combined = validHashes.map(([, v]) => v).join('|');
+  const hash = await sha256(combined);
+  setValue('fp-hash', hash.slice(0, 32) + '…');
+
+  if (signalCount >= 5) {
+    setValue('fp-uniqueness', 'Likely unique among hundreds of thousands of browsers');
+  } else if (signalCount >= 3) {
+    setValue('fp-uniqueness', 'Likely unique among thousands of browsers');
+  } else {
+    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available');
+  }
+};
+
 const init = async () => {
   const renderTime = Math.round(performance.now());
   const ipLookup = loadIpData();
   await loadBrowserData();
+
+  // Fingerprinting (collect hashes)
+  const canvasHash = await loadCanvasFingerprint();
+  const webglHash = await loadWebGLFingerprint();
+  const audioHash = await loadAudioFingerprint();
+  const fontsHash = await loadFontDetection();
+  const voicesPromise = loadSpeechVoices();
+  const pluginsData = loadPlugins();
+
+  // Non-fingerprint sections
   loadScreenData();
+  loadCSSPreferences();
   loadTimeData();
   loadVisitData();
+  loadMediaDevices();
+  loadStorageEstimate();
+  loadPermissionsStatus();
   loadConnectionData();
   loadBatteryData();
   loadGeolocation();
   measureLatency();
   setupLatencyRefresh();
   setupWebRTCTest();
+
+  // Wait for async fingerprint data, then compute summary
+  const voicesData = await voicesPromise;
+  const screenRaw = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const screenHash = await sha256(screenRaw);
+  const uaHash = await sha256(navigator.userAgent);
+
+  await loadFingerprintSummary({
+    canvas: canvasHash,
+    webgl: webglHash,
+    audio: audioHash,
+    fonts: fontsHash,
+    voices: voicesData,
+    plugins: pluginsData,
+    screen: screenHash,
+    ua: uaHash,
+  });
 
   const ipDuration = await ipLookup;
   updatePerformanceData(renderTime, ipDuration);
