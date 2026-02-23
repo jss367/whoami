@@ -56,6 +56,22 @@
       </div>
     </section>
 
+    <section>
+      <h2>Fingerprinting surface</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Canvas fingerprint</h3>
+          <canvas id="canvas-fp" width="200" height="40" style="display:block;margin-bottom:0.5rem;border-radius:4px;"></canvas>
+          <p id="canvas-hash" class="value">Computing…</p>
+        </div>
+        <div class="card"><h3>WebGL fingerprint</h3><p id="webgl-info" class="value">Detecting…</p></div>
+        <div class="card"><h3>AudioContext fingerprint</h3><p id="audio-hash" class="value">Computing…</p></div>
+        <div class="card"><h3>Detected fonts</h3><p id="fonts" class="value">Scanning…</p></div>
+        <div class="card"><h3>Speech synthesis voices</h3><p id="voices" class="value">Checking…</p></div>
+        <div class="card"><h3>Navigator plugins</h3><p id="plugins" class="value">Checking…</p></div>
+      </div>
+    </section>
+
     <section aria-labelledby="privacy-tips-heading">
       <h2 id="privacy-tips-heading">Privacy tips &amp; mitigations</h2>
       <ul class="tips-list">
