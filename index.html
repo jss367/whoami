@@ -14,6 +14,16 @@
 
   <main>
     <section>
+      <h2>Browser fingerprint summary</h2>
+      <div class="grid">
+        <div class="card"><h3>Combined fingerprint</h3><p id="fp-hash" class="value">Computing…</p></div>
+        <div class="card"><h3>Estimated uniqueness</h3><p id="fp-uniqueness" class="value">Analyzing…</p></div>
+        <div class="card"><h3>Signals collected</h3><p id="fp-signals" class="value">Gathering…</p></div>
+      </div>
+      <p class="note">This hash combines canvas, WebGL, audio, font, screen, and browser signals into a single fingerprint. Sites use similar techniques to track you without cookies.</p>
+    </section>
+
+    <section>
       <h2>Network identity</h2>
       <div class="grid">
         <div class="card"><h3>IP address</h3><p id="ip" class="value">Loading…</p></div>
@@ -72,16 +82,6 @@
       </div>
     </section>
 
-    <section aria-labelledby="privacy-tips-heading">
-      <h2 id="privacy-tips-heading">Privacy tips &amp; mitigations</h2>
-      <ul class="tips-list">
-        <li>Use a trusted VPN or privacy proxy to mask your IP, ASN, and geolocation.</li>
-        <li>Disable third-party cookies and limit cross-site tracking protections in your browser settings.</li>
-        <li>Turn off WebRTC or restrict local IP sharing in your browser to reduce leak surface.</li>
-        <li>Use privacy-focused extensions that block fingerprinting scripts and limit hardware disclosures.</li>
-      </ul>
-    </section>
-
     <section>
       <h2>Screen &amp; rendering</h2>
       <div class="grid">
@@ -90,6 +90,17 @@
         <div class="card"><h3>Pixel ratio</h3><p id="pixel-ratio" class="value"></p></div>
         <div class="card"><h3>Color depth</h3><p id="color-depth" class="value"></p></div>
       </div>
+    </section>
+
+    <section>
+      <h2>CSS &amp; accessibility preferences</h2>
+      <div class="grid">
+        <div class="card"><h3>Color scheme</h3><p id="pref-color-scheme" class="value"></p></div>
+        <div class="card"><h3>Reduced motion</h3><p id="pref-reduced-motion" class="value"></p></div>
+        <div class="card"><h3>Contrast preference</h3><p id="pref-contrast" class="value"></p></div>
+        <div class="card"><h3>Forced colors</h3><p id="pref-forced-colors" class="value"></p></div>
+      </div>
+      <p class="note">These CSS media queries reveal your OS-level display and accessibility settings.</p>
     </section>
 
     <section>
@@ -124,12 +135,48 @@
     </section>
 
     <section>
+      <h2>Device capabilities</h2>
+      <div class="grid">
+        <div class="card"><h3>Media devices</h3><p id="media-devices" class="value">Checking…</p></div>
+        <div class="card"><h3>Storage estimate</h3><p id="storage-estimate" class="value">Checking…</p></div>
+        <div class="card"><h3>Permissions status</h3><p id="permissions" class="value">Checking…</p></div>
+      </div>
+    </section>
+
+    <section>
       <h2>Network &amp; battery (experimental)</h2>
       <div class="grid">
         <div class="card"><h3>Connection</h3><p id="connection" class="value"></p></div>
         <div class="card"><h3>Battery</h3><p id="battery" class="value">Checking…</p></div>
       </div>
       <p class="note">Some browsers block these APIs or provide partial data for privacy.</p>
+    </section>
+
+    <section>
+      <h2>What this page cannot show you</h2>
+      <p>This page tests what your browser reveals to any website you visit. But real-world tracking and surveillance go far beyond browser APIs.</p>
+      <ul class="tips-list">
+        <li><strong>ISP logging</strong> — Your ISP logs every domain you visit. A VPN hides this from your ISP but your VPN provider sees it instead.</li>
+        <li><strong>DNS leaks</strong> — DNS queries may leak to your ISP even when using a VPN, unless you use DNS-over-HTTPS or DNS-over-TLS.</li>
+        <li><strong>Traffic analysis</strong> — Packet sizes and timing patterns can reveal what you're doing even through encrypted connections.</li>
+        <li><strong>Email &amp; document metadata</strong> — Tracking pixels in emails and metadata in files (EXIF in photos, author fields in documents) leak information outside the browser.</li>
+        <li><strong>Cross-site tracking</strong> — Third-party cookies, tracking pixels, and login fingerprinting across sites cannot be fully demonstrated from a single page.</li>
+        <li><strong>Network-level surveillance</strong> — Router, corporate firewall, or national-level monitoring operates below anything a browser can detect.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="privacy-tips-heading">
+      <h2 id="privacy-tips-heading">Privacy tips &amp; mitigations</h2>
+      <ul class="tips-list">
+        <li>Use a trusted VPN or privacy proxy to mask your IP, ASN, and geolocation.</li>
+        <li>Disable third-party cookies and limit cross-site tracking protections in your browser settings.</li>
+        <li>Turn off WebRTC or restrict local IP sharing in your browser to reduce leak surface.</li>
+        <li>Use privacy-focused extensions that block fingerprinting scripts and limit hardware disclosures.</li>
+        <li>Use Tor Browser to resist canvas, WebGL, and AudioContext fingerprinting — it normalizes these outputs.</li>
+        <li>Use DNS-over-HTTPS or DNS-over-TLS to prevent DNS leaks.</li>
+        <li>Strip metadata from files before sharing (EXIF data in photos, author fields in documents).</li>
+        <li>A VPN shifts trust from your ISP to the VPN provider — it does not eliminate logging.</li>
+      </ul>
     </section>
   </main>
 

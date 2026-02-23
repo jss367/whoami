@@ -469,19 +469,141 @@ const loadGeolocation = () => {
   }, { enableHighAccuracy: true, timeout: 10000 });
 };
 
+const loadCSSPreferences = () => {
+  const detect = (query, values) => {
+    for (const v of values) {
+      if (window.matchMedia(`(${query}: ${v})`).matches) return v;
+    }
+    return 'no-preference';
+  };
+  setValue('pref-color-scheme', detect('prefers-color-scheme', ['dark', 'light']));
+  setValue('pref-reduced-motion', detect('prefers-reduced-motion', ['reduce']));
+  setValue('pref-contrast', detect('prefers-contrast', ['more', 'less']));
+  setValue('pref-forced-colors', detect('forced-colors', ['active']));
+};
+
+const loadMediaDevices = async () => {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    setValue('media-devices', 'Not supported');
+    return;
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const counts = {};
+    for (const d of devices) {
+      counts[d.kind] = (counts[d.kind] || 0) + 1;
+    }
+    const parts = Object.entries(counts).map(([kind, count]) => `${kind}: ${count}`);
+    setValue('media-devices', parts.join(', ') || 'No devices found');
+  } catch (e) {
+    setValue('media-devices', 'Blocked');
+  }
+};
+
+const loadStorageEstimate = async () => {
+  if (!navigator.storage?.estimate) {
+    setValue('storage-estimate', 'Not supported');
+    return;
+  }
+  try {
+    const est = await navigator.storage.estimate();
+    const fmt = (bytes) => {
+      if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+      if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+      return `${bytes} bytes`;
+    };
+    setValue('storage-estimate', `Quota: ${fmt(est.quota)} • Used: ${fmt(est.usage)}`);
+  } catch (e) {
+    setValue('storage-estimate', 'Blocked');
+  }
+};
+
+const loadPermissionsStatus = async () => {
+  if (!navigator.permissions?.query) {
+    setValue('permissions', 'Permissions API not supported');
+    return;
+  }
+  const names = ['geolocation', 'notifications', 'camera', 'microphone', 'clipboard-read'];
+  const results = [];
+  for (const name of names) {
+    try {
+      const status = await navigator.permissions.query({ name });
+      results.push(`${name}: ${status.state}`);
+    } catch (e) {
+      results.push(`${name}: unsupported`);
+    }
+  }
+  setValue('permissions', results.join(' • '));
+};
+
+const loadFingerprintSummary = async (hashes) => {
+  const validHashes = Object.entries(hashes).filter(([, v]) => v && v !== 'blocked' && v !== 'unsupported' && v !== 'none' && v !== 'timeout');
+  const signalCount = validHashes.length;
+  setValue('fp-signals', `${signalCount} of ${Object.keys(hashes).length} signals`);
+
+  if (signalCount === 0) {
+    setValue('fp-hash', 'Unable to compute');
+    setValue('fp-uniqueness', 'Insufficient data');
+    return;
+  }
+
+  const combined = validHashes.map(([, v]) => v).join('|');
+  const hash = await sha256(combined);
+  setValue('fp-hash', hash.slice(0, 32) + '…');
+
+  if (signalCount >= 5) {
+    setValue('fp-uniqueness', 'Likely unique among hundreds of thousands of browsers');
+  } else if (signalCount >= 3) {
+    setValue('fp-uniqueness', 'Likely unique among thousands of browsers');
+  } else {
+    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available');
+  }
+};
+
 const init = async () => {
   const renderTime = Math.round(performance.now());
   const ipLookup = loadIpData();
   await loadBrowserData();
+
+  // Fingerprinting (collect hashes)
+  const canvasHash = await loadCanvasFingerprint();
+  const webglHash = await loadWebGLFingerprint();
+  const audioHash = await loadAudioFingerprint();
+  const fontsHash = await loadFontDetection();
+  const voicesPromise = loadSpeechVoices();
+  const pluginsData = loadPlugins();
+
+  // Non-fingerprint sections
   loadScreenData();
+  loadCSSPreferences();
   loadTimeData();
   loadVisitData();
+  loadMediaDevices();
+  loadStorageEstimate();
+  loadPermissionsStatus();
   loadConnectionData();
   loadBatteryData();
   loadGeolocation();
   measureLatency();
   setupLatencyRefresh();
   setupWebRTCTest();
+
+  // Wait for async fingerprint data, then compute summary
+  const voicesData = await voicesPromise;
+  const screenRaw = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const screenHash = await sha256(screenRaw);
+  const uaHash = await sha256(navigator.userAgent);
+
+  await loadFingerprintSummary({
+    canvas: canvasHash,
+    webgl: webglHash,
+    audio: audioHash,
+    fonts: fontsHash,
+    voices: voicesData,
+    plugins: pluginsData,
+    screen: screenHash,
+    ua: uaHash,
+  });
 
   const ipDuration = await ipLookup;
   updatePerformanceData(renderTime, ipDuration);
