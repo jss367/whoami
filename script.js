@@ -155,6 +155,7 @@ const detectBrowserName = () => {
   if ((m = ua.match(/EdgiOS\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge on iOS ${m[1]}`;
   if ((m = ua.match(/FxiOS\/(\d+(?:\.\d+)?)/))) return `Firefox on iOS ${m[1]}`;
   if ((m = ua.match(/OPiOS\/(\d+(?:\.\d+)?)/))) return `Opera on iOS ${m[1]}`;
+  if ((m = ua.match(/OPT\/(\d+(?:\.\d+)?)/))) return `Opera on iOS ${m[1]}`;
   if ((m = ua.match(/Firefox\/(\d+(?:\.\d+)?)/))) return `Firefox ${m[1]}`;
   if ((m = ua.match(/Edg\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge ${m[1]}`;
   if (/Safari/.test(ua) && !/Chrome|Chromium/.test(ua)) {
