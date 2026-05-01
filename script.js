@@ -151,6 +151,10 @@ const detectBrowserName = () => {
 
   const ua = navigator.userAgent;
   let m;
+  if ((m = ua.match(/CriOS\/(\d+(?:\.\d+)?)/))) return `Chrome on iOS ${m[1]}`;
+  if ((m = ua.match(/EdgiOS\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge on iOS ${m[1]}`;
+  if ((m = ua.match(/FxiOS\/(\d+(?:\.\d+)?)/))) return `Firefox on iOS ${m[1]}`;
+  if ((m = ua.match(/OPiOS\/(\d+(?:\.\d+)?)/))) return `Opera on iOS ${m[1]}`;
   if ((m = ua.match(/Firefox\/(\d+(?:\.\d+)?)/))) return `Firefox ${m[1]}`;
   if ((m = ua.match(/Edg\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge ${m[1]}`;
   if (/Safari/.test(ua) && !/Chrome|Chromium/.test(ua)) {
@@ -617,10 +621,21 @@ const detectBrowserClass = async (voicesData) => {
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (gl) {
       const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-      const vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : '';
-      const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      const unmaskedVendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : '';
+      const unmaskedRenderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      const maskedVendor = gl.getParameter(gl.VENDOR) || '';
+      const maskedRenderer = gl.getParameter(gl.RENDERER) || '';
       const noRealVoices = voicesData === 'none' || voicesData === 'timeout' || voicesData === 'unsupported';
-      if (vendor === 'Mozilla' && renderer === 'Mozilla' && noRealVoices) return 'tor';
+
+      // Tor allowing the unmasked extension returns the spoofed "Mozilla" pair directly.
+      const torTellUnmasked = unmaskedVendor === 'Mozilla' && unmaskedRenderer === 'Mozilla';
+      // Tor / RFP builds that block the unmasked extension expose only the masked
+      // params, which return Mozilla on Firefox-derived browsers. Combined with no
+      // voices, this is a strong Tor / privacy.resistFingerprinting tell.
+      const torTellMasked = !unmaskedVendor && !unmaskedRenderer
+        && /Mozilla/.test(maskedVendor) && /Mozilla/.test(maskedRenderer);
+
+      if ((torTellUnmasked || torTellMasked) && noRealVoices) return 'tor';
     }
   } catch (_) {}
 
