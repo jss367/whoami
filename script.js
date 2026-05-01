@@ -627,15 +627,14 @@ const detectBrowserClass = async (voicesData) => {
       const maskedRenderer = gl.getParameter(gl.RENDERER) || '';
       const noRealVoices = voicesData === 'none' || voicesData === 'timeout' || voicesData === 'unsupported';
 
-      // Tor allowing the unmasked extension returns the spoofed "Mozilla" pair directly.
-      const torTellUnmasked = unmaskedVendor === 'Mozilla' && unmaskedRenderer === 'Mozilla';
-      // Tor / RFP builds that block the unmasked extension expose only the masked
-      // params, which return Mozilla on Firefox-derived browsers. Combined with no
-      // voices, this is a strong Tor / privacy.resistFingerprinting tell.
-      const torTellMasked = !unmaskedVendor && !unmaskedRenderer
+      // Tor Browser uses Firefox's privacy.resistFingerprinting (RFP) under the hood,
+      // so client-side these two are deliberately indistinguishable: both spoof
+      // vendor/renderer to "Mozilla" and empty the voice list. Treat them as one class.
+      const rfpTellUnmasked = unmaskedVendor === 'Mozilla' && unmaskedRenderer === 'Mozilla';
+      const rfpTellMasked = !unmaskedVendor && !unmaskedRenderer
         && /Mozilla/.test(maskedVendor) && /Mozilla/.test(maskedRenderer);
 
-      if ((torTellUnmasked || torTellMasked) && noRealVoices) return 'tor';
+      if ((rfpTellUnmasked || rfpTellMasked) && noRealVoices) return 'rfp';
     }
   } catch (_) {}
 
@@ -661,8 +660,8 @@ const loadFingerprintSummary = async (hashes) => {
 
   const browserClass = await detectBrowserClass(hashes.voices);
 
-  if (browserClass === 'tor') {
-    setValue('fp-uniqueness', 'Tor Browser detected — your fingerprint is normalized to match other Tor users on this platform. The hash should be similar across Tor sessions running the same build.');
+  if (browserClass === 'rfp') {
+    setValue('fp-uniqueness', 'Tor Browser or Firefox with privacy.resistFingerprinting detected — fingerprint signals are normalized (vendor/renderer report "Mozilla", voices empty) so this hash is shared across other users running the same configuration. Client-side detection cannot distinguish Tor from plain Firefox+RFP.');
   } else if (browserClass === 'brave') {
     setValue('fp-uniqueness', 'Brave fingerprint protection detected — several signals are randomized ("farbled") per session, so this hash is not a stable cross-site identifier. Individual snapshots can still look unusual.');
   } else if (signalCount >= 5) {
