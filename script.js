@@ -142,6 +142,25 @@ const setupLatencyRefresh = () => {
   button.addEventListener('click', () => measureLatency());
 };
 
+const detectBrowserName = () => {
+  const brands = navigator.userAgentData?.brands || [];
+  const real = brands.filter((b) => !/Not.?A.?Brand/i.test(b.brand));
+  const specific = real.find((b) => b.brand !== 'Chromium');
+  if (specific) return `${specific.brand} ${specific.version}`;
+  if (real[0]) return `${real[0].brand} ${real[0].version}`;
+
+  const ua = navigator.userAgent;
+  let m;
+  if ((m = ua.match(/Firefox\/(\d+(?:\.\d+)?)/))) return `Firefox ${m[1]}`;
+  if ((m = ua.match(/Edg\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge ${m[1]}`;
+  if (/Safari/.test(ua) && !/Chrome|Chromium/.test(ua)) {
+    if ((m = ua.match(/Version\/(\d+(?:\.\d+)?)/))) return `Safari ${m[1]}`;
+    return 'Safari (version unknown)';
+  }
+  if ((m = ua.match(/Chrome\/(\d+(?:\.\d+)?)/))) return `Chromium-based ${m[1]}`;
+  return 'Unknown';
+};
+
 const loadBrowserData = async () => {
   const ua = navigator.userAgent;
   let uaBrands = '';
@@ -150,6 +169,7 @@ const loadBrowserData = async () => {
     uaBrands = `\nBrands: ${navigator.userAgentData.brands.map((b) => `${b.brand} ${b.version}`).join(', ')}`;
   }
 
+  setValue('browser-name', detectBrowserName());
   setValue('user-agent', `${ua}${uaBrands}`.trim());
 
   let platform = navigator.platform || 'Unknown';
@@ -536,6 +556,55 @@ const loadPermissionsStatus = async () => {
   setValue('permissions', results.join(' • '));
 };
 
+const checkHashStability = (hashes) => {
+  const tracked = ['canvas', 'webgl', 'audio'];
+
+  let storage;
+  try {
+    const t = '__whoami_test__';
+    localStorage.setItem(t, t);
+    localStorage.removeItem(t);
+    storage = localStorage;
+  } catch (_) {
+    setValue('fp-stability', 'localStorage unavailable — cannot compare across visits.');
+    return;
+  }
+
+  const results = tracked.map((key) => {
+    const cur = hashes[key];
+    if (!cur || cur === 'blocked' || cur === 'unsupported') return { key, status: 'unavailable' };
+    const storageKey = `whoami:prev:${key}`;
+    const prev = storage.getItem(storageKey);
+    storage.setItem(storageKey, cur);
+    if (!prev) return { key, status: 'new' };
+    return { key, status: prev === cur ? 'stable' : 'changed' };
+  });
+
+  const usable = results.filter((r) => r.status !== 'unavailable');
+  if (usable.length === 0) {
+    setValue('fp-stability', 'No comparable signals available.');
+    return;
+  }
+
+  const newSig = usable.filter((r) => r.status === 'new');
+  if (newSig.length === usable.length) {
+    setValue('fp-stability', 'First visit — reload the page to compare canvas, WebGL, and audio hashes against this session.');
+    return;
+  }
+
+  const stable = usable.filter((r) => r.status === 'stable');
+  const changed = usable.filter((r) => r.status === 'changed');
+  const fmt = (arr) => arr.map((r) => r.key).join(', ');
+
+  if (changed.length === 0) {
+    setValue('fp-stability', `${stable.length} of ${usable.length} hardware signals (${fmt(stable)}) match the previous visit. This browser is trackable across visits via these signals.`);
+  } else if (stable.length === 0) {
+    setValue('fp-stability', `All ${changed.length} hardware signals (${fmt(changed)}) changed since last visit — this browser is randomizing fingerprint signals (Brave farbling, JShelter, CanvasBlocker, Tor, etc.).`);
+  } else {
+    setValue('fp-stability', `Partial randomization: ${changed.length} changed (${fmt(changed)}), ${stable.length} stable (${fmt(stable)}).`);
+  }
+};
+
 const detectBrowserClass = async (voicesData) => {
   if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
     try {
@@ -572,6 +641,8 @@ const loadFingerprintSummary = async (hashes) => {
   const combined = validHashes.map(([, v]) => v).join('|');
   const hash = await sha256(combined);
   setValue('fp-hash', hash.slice(0, 32) + '…');
+
+  checkHashStability(hashes);
 
   const browserClass = await detectBrowserClass(hashes.voices);
 
