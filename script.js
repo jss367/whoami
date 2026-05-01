@@ -601,7 +601,7 @@ const checkHashStability = (hashes) => {
   const fmt = (arr) => arr.map((r) => r.key).join(', ');
 
   if (changed.length === 0) {
-    setValue('fp-stability', `${stable.length} of ${usable.length} hardware signals (${fmt(stable)}) match the previous visit. This browser is trackable across visits via these signals.`);
+    setValue('fp-stability', `${stable.length} of ${usable.length} hardware signals (${fmt(stable)}) match the stored previous values — stable across reloads in this session. Cross-session linkability also depends on whether the browser regenerates these on a fresh launch (e.g. Brave farbles per-session, so reload-stable values can still differ across sessions).`);
   } else if (stable.length === 0) {
     setValue('fp-stability', `All ${changed.length} hardware signals (${fmt(changed)}) changed since last visit — this browser is randomizing fingerprint signals (Brave farbling, JShelter, CanvasBlocker, Tor, etc.).`);
   } else {
@@ -634,7 +634,16 @@ const detectBrowserClass = async (voicesData) => {
       const rfpTellMasked = !unmaskedVendor && !unmaskedRenderer
         && /Mozilla/.test(maskedVendor) && /Mozilla/.test(maskedRenderer);
 
-      if ((rfpTellUnmasked || rfpTellMasked) && noRealVoices) return 'rfp';
+      // RFP/Tor force the timezone to UTC unconditionally; plain Firefox without RFP
+      // reports the system timezone. Gating on UTC removes the false positive on
+      // Firefox configs that happen to also have no voices and a blocked WebGL ext.
+      let isUTC = false;
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        isUTC = tz === 'UTC' || new Date().getTimezoneOffset() === 0;
+      } catch (_) {}
+
+      if ((rfpTellUnmasked || rfpTellMasked) && noRealVoices && isUTC) return 'rfp';
     }
   } catch (_) {}
 
@@ -646,6 +655,8 @@ const loadFingerprintSummary = async (hashes) => {
   const signalCount = validHashes.length;
   setValue('fp-signals', `${signalCount} of ${Object.keys(hashes).length} signals`);
 
+  checkHashStability(hashes);
+
   if (signalCount === 0) {
     setValue('fp-hash', 'Unable to compute');
     setValue('fp-uniqueness', 'Insufficient data');
@@ -655,8 +666,6 @@ const loadFingerprintSummary = async (hashes) => {
   const combined = validHashes.map(([, v]) => v).join('|');
   const hash = await sha256(combined);
   setValue('fp-hash', hash.slice(0, 32) + '…');
-
-  checkHashStability(hashes);
 
   const browserClass = await detectBrowserClass(hashes.voices);
 
