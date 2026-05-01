@@ -536,6 +536,28 @@ const loadPermissionsStatus = async () => {
   setValue('permissions', results.join(' • '));
 };
 
+const detectBrowserClass = async (voicesData) => {
+  if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+    try {
+      if (await navigator.brave.isBrave()) return 'brave';
+    } catch (_) {}
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : '';
+      const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      const noRealVoices = voicesData === 'none' || voicesData === 'timeout' || voicesData === 'unsupported';
+      if (vendor === 'Mozilla' && renderer === 'Mozilla' && noRealVoices) return 'tor';
+    }
+  } catch (_) {}
+
+  return 'standard';
+};
+
 const loadFingerprintSummary = async (hashes) => {
   const validHashes = Object.entries(hashes).filter(([, v]) => v && v !== 'blocked' && v !== 'unsupported' && v !== 'none' && v !== 'timeout');
   const signalCount = validHashes.length;
@@ -551,12 +573,18 @@ const loadFingerprintSummary = async (hashes) => {
   const hash = await sha256(combined);
   setValue('fp-hash', hash.slice(0, 32) + '…');
 
-  if (signalCount >= 5) {
-    setValue('fp-uniqueness', 'Likely unique among hundreds of thousands of browsers');
+  const browserClass = await detectBrowserClass(hashes.voices);
+
+  if (browserClass === 'tor') {
+    setValue('fp-uniqueness', 'Tor Browser detected — your fingerprint is normalized to match other Tor users on this platform. The hash should be similar across Tor sessions running the same build.');
+  } else if (browserClass === 'brave') {
+    setValue('fp-uniqueness', 'Brave fingerprint protection detected — several signals are randomized ("farbled") per session, so this hash is not a stable cross-site identifier. Individual snapshots can still look unusual.');
+  } else if (signalCount >= 5) {
+    setValue('fp-uniqueness', `${signalCount} signals collected — high fingerprinting surface. Real-world uniqueness depends on how rare each value is in the wider population, which this page cannot measure (try AmIUnique or Panopticlick for that).`);
   } else if (signalCount >= 3) {
-    setValue('fp-uniqueness', 'Likely unique among thousands of browsers');
+    setValue('fp-uniqueness', `${signalCount} signals collected — moderate fingerprinting surface.`);
   } else {
-    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available');
+    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available.');
   }
 };
 
