@@ -144,7 +144,7 @@ const setupLatencyRefresh = () => {
 
 const detectBrowserName = () => {
   const brands = navigator.userAgentData?.brands || [];
-  const real = brands.filter((b) => !/Not.?A.?Brand/i.test(b.brand));
+  const real = brands.filter((b) => !/Not.?A.?Brand/i.test(b.brand) && b.brand !== 'HeadlessChrome');
   const specific = real.find((b) => b.brand !== 'Chromium');
   if (specific) return `${specific.brand} ${specific.version}`;
   if (real[0]) return `${real[0].brand} ${real[0].version}`;
