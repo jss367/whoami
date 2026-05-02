@@ -142,6 +142,30 @@ const setupLatencyRefresh = () => {
   button.addEventListener('click', () => measureLatency());
 };
 
+const detectBrowserName = () => {
+  const brands = navigator.userAgentData?.brands || [];
+  const real = brands.filter((b) => !/Not.?A.?Brand/i.test(b.brand));
+  const specific = real.find((b) => b.brand !== 'Chromium');
+  if (specific) return `${specific.brand} ${specific.version}`;
+  if (real[0]) return `${real[0].brand} ${real[0].version}`;
+
+  const ua = navigator.userAgent;
+  let m;
+  if ((m = ua.match(/CriOS\/(\d+(?:\.\d+)?)/))) return `Chrome on iOS ${m[1]}`;
+  if ((m = ua.match(/EdgiOS\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge on iOS ${m[1]}`;
+  if ((m = ua.match(/FxiOS\/(\d+(?:\.\d+)?)/))) return `Firefox on iOS ${m[1]}`;
+  if ((m = ua.match(/OPiOS\/(\d+(?:\.\d+)?)/))) return `Opera on iOS ${m[1]}`;
+  if ((m = ua.match(/OPT\/(\d+(?:\.\d+)?)/))) return `Opera on iOS ${m[1]}`;
+  if ((m = ua.match(/Firefox\/(\d+(?:\.\d+)?)/))) return `Firefox ${m[1]}`;
+  if ((m = ua.match(/Edg\/(\d+(?:\.\d+)?)/))) return `Microsoft Edge ${m[1]}`;
+  if (/Safari/.test(ua) && !/Chrome|Chromium/.test(ua)) {
+    if ((m = ua.match(/Version\/(\d+(?:\.\d+)?)/))) return `Safari ${m[1]}`;
+    return 'Safari (version unknown)';
+  }
+  if ((m = ua.match(/Chrome\/(\d+(?:\.\d+)?)/))) return `Chromium-based ${m[1]}`;
+  return 'Unknown';
+};
+
 const loadBrowserData = async () => {
   const ua = navigator.userAgent;
   let uaBrands = '';
@@ -150,6 +174,7 @@ const loadBrowserData = async () => {
     uaBrands = `\nBrands: ${navigator.userAgentData.brands.map((b) => `${b.brand} ${b.version}`).join(', ')}`;
   }
 
+  setValue('browser-name', detectBrowserName());
   setValue('user-agent', `${ua}${uaBrands}`.trim());
 
   let platform = navigator.platform || 'Unknown';
@@ -536,10 +561,102 @@ const loadPermissionsStatus = async () => {
   setValue('permissions', results.join(' • '));
 };
 
+const checkHashStability = (hashes) => {
+  const tracked = ['canvas', 'webgl', 'audio'];
+
+  let storage;
+  try {
+    const t = '__whoami_test__';
+    localStorage.setItem(t, t);
+    localStorage.removeItem(t);
+    storage = localStorage;
+  } catch (_) {
+    setValue('fp-stability', 'localStorage unavailable — cannot compare across visits.');
+    return;
+  }
+
+  const results = tracked.map((key) => {
+    const cur = hashes[key];
+    if (!cur || cur === 'blocked' || cur === 'unsupported') return { key, status: 'unavailable' };
+    const storageKey = `whoami:prev:${key}`;
+    const prev = storage.getItem(storageKey);
+    storage.setItem(storageKey, cur);
+    if (!prev) return { key, status: 'new' };
+    return { key, status: prev === cur ? 'stable' : 'changed' };
+  });
+
+  const usable = results.filter((r) => r.status !== 'unavailable');
+  if (usable.length === 0) {
+    setValue('fp-stability', 'No comparable signals available.');
+    return;
+  }
+
+  const newSig = usable.filter((r) => r.status === 'new');
+  if (newSig.length === usable.length) {
+    setValue('fp-stability', 'First visit — reload the page to compare canvas, WebGL, and audio hashes against this session.');
+    return;
+  }
+
+  const stable = usable.filter((r) => r.status === 'stable');
+  const changed = usable.filter((r) => r.status === 'changed');
+  const fmt = (arr) => arr.map((r) => r.key).join(', ');
+
+  if (changed.length === 0) {
+    setValue('fp-stability', `${stable.length} of ${usable.length} hardware signals (${fmt(stable)}) match the stored previous values — stable across reloads in this session. Cross-session linkability also depends on whether the browser regenerates these on a fresh launch (e.g. Brave farbles per-session, so reload-stable values can still differ across sessions).`);
+  } else if (stable.length === 0) {
+    setValue('fp-stability', `All ${changed.length} hardware signals (${fmt(changed)}) changed since last visit — this browser is randomizing fingerprint signals (Brave farbling, JShelter, CanvasBlocker, Tor, etc.).`);
+  } else {
+    setValue('fp-stability', `Partial randomization: ${changed.length} changed (${fmt(changed)}), ${stable.length} stable (${fmt(stable)}).`);
+  }
+};
+
+const detectBrowserClass = async (voicesData) => {
+  if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+    try {
+      if (await navigator.brave.isBrave()) return 'brave';
+    } catch (_) {}
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const unmaskedVendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : '';
+      const unmaskedRenderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      const maskedVendor = gl.getParameter(gl.VENDOR) || '';
+      const maskedRenderer = gl.getParameter(gl.RENDERER) || '';
+      const noRealVoices = voicesData === 'none' || voicesData === 'timeout' || voicesData === 'unsupported';
+
+      // Tor Browser uses Firefox's privacy.resistFingerprinting (RFP) under the hood,
+      // so client-side these two are deliberately indistinguishable: both spoof
+      // vendor/renderer to "Mozilla" and empty the voice list. Treat them as one class.
+      const rfpTellUnmasked = unmaskedVendor === 'Mozilla' && unmaskedRenderer === 'Mozilla';
+      const rfpTellMasked = !unmaskedVendor && !unmaskedRenderer
+        && /Mozilla/.test(maskedVendor) && /Mozilla/.test(maskedRenderer);
+
+      // RFP/Tor force the timezone to UTC unconditionally; plain Firefox without RFP
+      // reports the system timezone. Gating on UTC removes the false positive on
+      // Firefox configs that happen to also have no voices and a blocked WebGL ext.
+      let isUTC = false;
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        isUTC = tz === 'UTC' || new Date().getTimezoneOffset() === 0;
+      } catch (_) {}
+
+      if ((rfpTellUnmasked || rfpTellMasked) && noRealVoices && isUTC) return 'rfp';
+    }
+  } catch (_) {}
+
+  return 'standard';
+};
+
 const loadFingerprintSummary = async (hashes) => {
   const validHashes = Object.entries(hashes).filter(([, v]) => v && v !== 'blocked' && v !== 'unsupported' && v !== 'none' && v !== 'timeout');
   const signalCount = validHashes.length;
   setValue('fp-signals', `${signalCount} of ${Object.keys(hashes).length} signals`);
+
+  checkHashStability(hashes);
 
   if (signalCount === 0) {
     setValue('fp-hash', 'Unable to compute');
@@ -551,12 +668,18 @@ const loadFingerprintSummary = async (hashes) => {
   const hash = await sha256(combined);
   setValue('fp-hash', hash.slice(0, 32) + '…');
 
-  if (signalCount >= 5) {
-    setValue('fp-uniqueness', 'Likely unique among hundreds of thousands of browsers');
+  const browserClass = await detectBrowserClass(hashes.voices);
+
+  if (browserClass === 'rfp') {
+    setValue('fp-uniqueness', 'Tor Browser or Firefox with privacy.resistFingerprinting detected — fingerprint signals are normalized (vendor/renderer report "Mozilla", voices empty) so this hash is shared across other users running the same configuration. Client-side detection cannot distinguish Tor from plain Firefox+RFP.');
+  } else if (browserClass === 'brave') {
+    setValue('fp-uniqueness', 'Brave fingerprint protection detected — several signals are randomized ("farbled") per session, so this hash is not a stable cross-site identifier. Individual snapshots can still look unusual.');
+  } else if (signalCount >= 5) {
+    setValue('fp-uniqueness', `${signalCount} signals collected — high fingerprinting surface. Real-world uniqueness depends on how rare each value is in the wider population, which this page cannot measure (try AmIUnique or Panopticlick for that).`);
   } else if (signalCount >= 3) {
-    setValue('fp-uniqueness', 'Likely unique among thousands of browsers');
+    setValue('fp-uniqueness', `${signalCount} signals collected — moderate fingerprinting surface.`);
   } else {
-    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available');
+    setValue('fp-uniqueness', 'Low entropy — limited fingerprinting signals available.');
   }
 };
 

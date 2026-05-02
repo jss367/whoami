@@ -19,6 +19,7 @@
         <div class="card"><h3>Combined fingerprint</h3><p id="fp-hash" class="value">Computing…</p></div>
         <div class="card"><h3>Estimated uniqueness</h3><p id="fp-uniqueness" class="value">Analyzing…</p></div>
         <div class="card"><h3>Signals collected</h3><p id="fp-signals" class="value">Gathering…</p></div>
+        <div class="card"><h3>Hash stability</h3><p id="fp-stability" class="value">Checking…</p><p class="note">Compares canvas, WebGL, and audio hashes to your previous visit (uses localStorage). Reload to populate.</p></div>
       </div>
       <p class="note">This hash combines canvas, WebGL, audio, font, screen, and browser signals into a single fingerprint. Sites use similar techniques to track you without cookies.</p>
     </section>
@@ -53,6 +54,7 @@
     <section>
       <h2>Browser &amp; device</h2>
       <div class="grid">
+        <div class="card"><h3>Detected browser</h3><p id="browser-name" class="value">Detecting…</p><p class="note">Extracted from User-Agent Client Hints (<code>navigator.userAgentData.brands</code>) when available, with UA-string fallback for Firefox/Safari.</p></div>
         <div class="card"><h3>User agent</h3><p id="user-agent" class="value"></p></div>
         <div class="card"><h3>Platform</h3><p id="platform" class="value"></p></div>
         <div class="card"><h3>Languages</h3><p id="languages" class="value"></p></div>
