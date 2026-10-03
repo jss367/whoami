@@ -515,6 +515,7 @@ const loadBatteryData = async () => {
 };
 
 const runGeolocation = () => new Promise((resolve) => {
+  ['geo-coords', 'geo-accuracy', 'geo-altitude'].forEach(id => setValue(id, '—'));
   setValue('geo-status', 'Waiting for permission…');
   navigator.geolocation.getCurrentPosition((pos) => {
     const { latitude, longitude, accuracy, altitude } = pos.coords;
