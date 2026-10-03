@@ -82,3 +82,44 @@ test('initial and repeated failures keep location empty and allow another retry'
     expect(await page.evaluate(() => (window as any).geoRequests.length)).toBe(request);
   }
 });
+
+for (const probe of ['user-agent', 'audio'] as const) {
+  test(`accepts early location clicks while ${probe} initialization is pending`, async ({ page }) => {
+    await page.addInitScript(probe => {
+      if (probe === 'user-agent') {
+        Object.defineProperty(navigator, 'userAgentData', {
+          value: {
+            getHighEntropyValues: () => new Promise(resolve => {
+              (window as any).resumeProbe = () => resolve({ platform: 'Test platform' });
+            }),
+          },
+        });
+      } else {
+        const original = OfflineAudioContext.prototype.startRendering;
+        OfflineAudioContext.prototype.startRendering = function () {
+          return new Promise(resolve => {
+            (window as any).resumeProbe = () => resolve(original.call(this));
+          });
+        };
+      }
+    }, probe);
+    await page.reload();
+    await page.waitForFunction(() => typeof (window as any).resumeProbe === 'function');
+    await expect(page.locator('#fp-hash')).toHaveText('Computing…');
+    expect(await page.evaluate(() => (window as any).geoRequests.length)).toBe(0);
+
+    await page.locator('#geo-run').click();
+    await expect(page.locator('#geo-status')).toHaveText('Waiting for permission…');
+    await expect(page.locator('#geo-run')).toBeDisabled();
+    expect(await page.evaluate(() => (window as any).geoRequests.length)).toBe(1);
+    await shareLocation(page);
+
+    // Finishing initialization must leave exactly one location listener attached.
+    await page.evaluate(() => (window as any).resumeProbe());
+    await expect(page.locator('#fp-hash')).not.toHaveText('Computing…', { timeout: 15_000 });
+    await page.locator('#geo-run').click();
+    expect(await page.evaluate(() => (window as any).geoRequests.length)).toBe(2);
+    await expectEmptyLocation(page);
+    await shareLocation(page);
+  });
+}

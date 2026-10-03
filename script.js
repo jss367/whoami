@@ -778,6 +778,7 @@ const loadFingerprintSummary = async (hashes) => {
 };
 
 const init = async () => {
+  setupGeolocation();
   const renderTime = Math.round(performance.now());
   const ipLookup = loadIpData();
   await loadBrowserData();
@@ -800,7 +801,6 @@ const init = async () => {
   loadPermissionsStatus();
   loadConnectionData();
   loadBatteryData();
-  setupGeolocation();
   measureLatency();
   setupLatencyRefresh();
   setupWebRTCTest();
