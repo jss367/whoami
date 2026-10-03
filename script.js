@@ -5,6 +5,31 @@ const setValue = (id, value) => {
   }
 };
 
+// Facts gathered for the headline summary at the top of the page.
+const facts = {};
+
+// Shows a short preview of a long list, with the full list in a collapsible <details> after it.
+const setList = (id, noun, items, previewCount = 8) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  document.getElementById(`${id}-all`)?.remove();
+  const preview = items.slice(0, previewCount).join(', ');
+  const more = items.length > previewCount;
+  el.textContent = `${items.length} ${noun}: ${preview}${more ? ', …' : ''}`;
+  if (!more) return;
+
+  const details = document.createElement('details');
+  details.id = `${id}-all`;
+  details.className = 'list-all';
+  const summary = document.createElement('summary');
+  summary.textContent = `Show all ${items.length}`;
+  const full = document.createElement('p');
+  full.className = 'value';
+  full.textContent = items.join(', ');
+  details.append(summary, full);
+  el.after(details);
+};
+
 const formatList = (list) => Array.isArray(list) ? list.join(', ') : String(list || 'Unknown');
 
 const formatLocation = (data) => {
@@ -30,6 +55,8 @@ const loadIpData = async () => {
     setValue('ip-location', `${formatLocation(data)}${data.postal ? ` ${data.postal}` : ''}`);
     setValue('asn', data.org || data.asn || 'Unavailable');
     setValue('hostname', data.hostname || 'Unavailable');
+    facts.location = formatLocation(data);
+    facts.isp = data.org;
   } catch (error) {
     setValue('ip', 'Unavailable');
     setValue('ip-location', 'Unable to fetch IP-based location');
@@ -197,6 +224,9 @@ const loadBrowserData = async () => {
   }
 
   setValue('platform', platform);
+  facts.platform = platform;
+  facts.cores = navigator.hardwareConcurrency;
+  facts.memory = navigator.deviceMemory;
   setValue('languages', formatList(navigator.languages || navigator.language));
   setValue('dnt', navigator.doNotTrack === '1' ? 'Enabled' : 'Disabled or not reported');
   setValue('cookies', navigator.cookieEnabled ? 'Yes' : 'No');
@@ -212,11 +242,13 @@ const loadScreenData = () => {
   setValue('viewport', `${window.innerWidth} x ${window.innerHeight}`);
   setValue('pixel-ratio', window.devicePixelRatio || 1);
   setValue('color-depth', `${colorDepth}-bit`);
+  facts.screen = `${width} x ${height}`;
 };
 
 const loadTimeData = () => {
   setValue('local-time', new Date().toLocaleString());
-  setValue('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown');
+  facts.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  setValue('timezone', facts.timezone || 'Unknown');
   setValue('referrer', document.referrer || 'None');
   setValue('page-url', window.location.href);
 };
@@ -314,6 +346,7 @@ const loadWebGLFingerprint = async () => {
     const extensions = gl.getSupportedExtensions() || [];
     const summary = `${vendor} — ${renderer}\nMax texture: ${maxTexture}, Max viewport: ${maxViewport[0]}x${maxViewport[1]}\n${extensions.length} extensions supported`;
     setValue('webgl-info', summary);
+    facts.gpu = renderer;
     const raw = `${vendor}|${renderer}|${maxTexture}|${extensions.join(',')}`;
     return await sha256(raw);
   } catch (e) {
@@ -395,8 +428,12 @@ const loadFontDetection = async () => {
   }
 
   document.body.removeChild(span);
-  const label = detected.length ? `${detected.length} fonts: ${detected.join(', ')}` : 'No extra fonts detected';
-  setValue('fonts', label);
+  facts.fontCount = detected.length;
+  if (detected.length) {
+    setList('fonts', 'fonts', detected);
+  } else {
+    setValue('fonts', 'No extra fonts detected');
+  }
   return await sha256(detected.join(','));
 };
 
@@ -409,8 +446,8 @@ const loadSpeechVoices = () => {
         resolve('none');
         return;
       }
-      const names = voices.map(v => `${v.name} (${v.lang})`);
-      setValue('voices', `${voices.length} voices: ${names.join(', ')}`);
+      facts.voiceCount = voices.length;
+      setList('voices', 'voices', voices.map(v => `${v.name} (${v.lang})`));
       resolve(voices.map(v => v.name).join(','));
     };
 
@@ -442,7 +479,7 @@ const loadPlugins = () => {
     return 'none';
   }
   const names = plugins.map(p => p.name);
-  setValue('plugins', `${names.length} plugins: ${names.join(', ')}`);
+  setList('plugins', 'plugins', names);
   return names.join(',');
 };
 
@@ -477,21 +514,78 @@ const loadBatteryData = async () => {
   }
 };
 
-const loadGeolocation = () => {
-  if (!navigator.geolocation) {
-    setValue('geo-status', 'Geolocation not supported');
-    return;
-  }
-
+const runGeolocation = () => new Promise((resolve) => {
+  ['geo-coords', 'geo-accuracy', 'geo-altitude'].forEach(id => setValue(id, '—'));
+  setValue('geo-status', 'Waiting for permission…');
   navigator.geolocation.getCurrentPosition((pos) => {
     const { latitude, longitude, accuracy, altitude } = pos.coords;
     setValue('geo-status', `Location shared at ${new Date(pos.timestamp).toLocaleTimeString()}`);
     setValue('geo-coords', `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
     setValue('geo-accuracy', `${Math.round(accuracy)} meters`);
     setValue('geo-altitude', altitude != null ? `${altitude.toFixed(2)} meters` : 'Not provided');
+    resolve();
   }, (err) => {
     setValue('geo-status', `Denied or unavailable (${err.message})`);
+    resolve();
   }, { enableHighAccuracy: true, timeout: 10000 });
+});
+
+const setupGeolocation = () => {
+  const button = document.getElementById('geo-run');
+  if (!button) return;
+
+  if (!navigator.geolocation) {
+    setValue('geo-status', 'Geolocation not supported');
+    button.disabled = true;
+    return;
+  }
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    await runGeolocation();
+    button.disabled = false;
+  });
+};
+
+// Turns raw WebGL renderer strings like "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+// into something readable ("Apple M2").
+const cleanGpuName = (renderer) => {
+  if (!renderer || renderer === 'Unknown' || renderer === 'Mozilla') return null;
+  const angle = renderer.match(/^ANGLE \([^,]*,\s*(.+?)(?:,[^,]*)?\)$/);
+  const name = (angle ? angle[1] : renderer)
+    .replace(/^ANGLE \w+ Renderer:\s*/, '')
+    .replace(/\s*\(0x[0-9a-f]+\)/i, '')
+    .replace(/\s+(Direct3D|OpenGL|vs_|ps_).*$/, '')
+    .trim();
+  return name || null;
+};
+
+const renderHeadline = () => {
+  const list = document.getElementById('headline-facts');
+  if (!list) return;
+
+  const specs = [facts.cores && `${facts.cores} CPU cores`, facts.memory && `about ${facts.memory} GB of RAM`]
+    .filter(Boolean).join(' and ');
+  const platform = facts.platform !== 'Unknown' && facts.platform;
+  const device = platform ? `You're on ${platform}${specs ? ` with ${specs}` : ''}` : specs && `Your device has ${specs}`;
+  const gpu = cleanGpuName(facts.gpu);
+
+  const items = [
+    facts.location && facts.location !== 'Unavailable' && `You're near ${facts.location} (from your IP address)`,
+    facts.isp && `Your internet provider is ${facts.isp}`,
+    device,
+    gpu && `Your graphics hardware is ${gpu}`,
+    facts.screen && `Your screen is ${facts.screen}`,
+    facts.timezone && `Your clock is set to ${facts.timezone}`,
+    facts.fontCount && `${facts.fontCount} of the fonts we checked are installed`,
+    facts.voiceCount && `You have ${facts.voiceCount} text-to-speech voices`,
+  ].filter(Boolean);
+
+  list.replaceChildren(...(items.length ? items : ['Very little. Your browser is hiding most signals.']).map((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    return li;
+  }));
 };
 
 const loadCSSPreferences = () => {
@@ -684,6 +778,7 @@ const loadFingerprintSummary = async (hashes) => {
 };
 
 const init = async () => {
+  setupGeolocation();
   const renderTime = Math.round(performance.now());
   const ipLookup = loadIpData();
   await loadBrowserData();
@@ -706,7 +801,6 @@ const init = async () => {
   loadPermissionsStatus();
   loadConnectionData();
   loadBatteryData();
-  loadGeolocation();
   measureLatency();
   setupLatencyRefresh();
   setupWebRTCTest();
@@ -728,8 +822,11 @@ const init = async () => {
     ua: uaHash,
   });
 
+  renderHeadline();
+
   const ipDuration = await ipLookup;
   updatePerformanceData(renderTime, ipDuration);
+  renderHeadline();
 };
 
 document.addEventListener('DOMContentLoaded', init);

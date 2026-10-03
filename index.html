@@ -13,6 +13,12 @@
   </header>
 
   <main>
+    <section class="headline" aria-labelledby="headline-heading">
+      <h2 id="headline-heading">What this page learned about you</h2>
+      <p>Without asking for a single permission, any website can see that:</p>
+      <ul id="headline-facts" class="facts-list" aria-live="polite"><li>Analyzing…</li></ul>
+    </section>
+
     <section>
       <h2>Browser fingerprint summary</h2>
       <div class="grid">
@@ -27,10 +33,10 @@
     <section>
       <h2>Network identity</h2>
       <div class="grid">
-        <div class="card"><h3>IP address</h3><p id="ip" class="value">Loading…</p></div>
-        <div class="card"><h3>Approximate location (from IP)</h3><p id="ip-location" class="value">Loading…</p></div>
-        <div class="card"><h3>ISP/ASN</h3><p id="asn" class="value">Loading…</p></div>
-        <div class="card"><h3>Hostname</h3><p id="hostname" class="value">Loading…</p></div>
+        <div class="card"><h3>IP address</h3><p id="ip" class="value">Loading…</p><p class="note why">Every site you visit sees this. It links your visits together and points to your network.</p></div>
+        <div class="card"><h3>Approximate location (from IP)</h3><p id="ip-location" class="value">Loading…</p><p class="note why">Derived from your IP alone, with no permission prompt.</p></div>
+        <div class="card"><h3>ISP/ASN</h3><p id="asn" class="value">Loading…</p><p class="note why">Names your provider, or your employer, university, or VPN if your traffic goes through theirs.</p></div>
+        <div class="card"><h3>Hostname</h3><p id="hostname" class="value">Loading…</p><p class="note why">Reverse DNS often encodes your ISP, region, or connection type.</p></div>
         <div class="card card-action">
           <div class="card-header">
             <h3>Latency check</h3>
@@ -55,15 +61,15 @@
       <h2>Browser &amp; device</h2>
       <div class="grid">
         <div class="card"><h3>Detected browser</h3><p id="browser-name" class="value">Detecting…</p><p class="note">Extracted from User-Agent Client Hints (<code>navigator.userAgentData.brands</code>) when available, with UA-string fallback for Firefox/Safari.</p></div>
-        <div class="card"><h3>User agent</h3><p id="user-agent" class="value"></p></div>
-        <div class="card"><h3>Platform</h3><p id="platform" class="value"></p></div>
-        <div class="card"><h3>Languages</h3><p id="languages" class="value"></p></div>
-        <div class="card"><h3>Do Not Track</h3><p id="dnt" class="value"></p></div>
-        <div class="card"><h3>Cookies enabled</h3><p id="cookies" class="value"></p></div>
-        <div class="card"><h3>Hardware concurrency</h3><p id="cores" class="value"></p></div>
-        <div class="card"><h3>Memory estimate</h3><p id="memory" class="value"></p></div>
-        <div class="card"><h3>Touch support</h3><p id="touch" class="value"></p></div>
-        <div class="card"><h3>WebDriver detected</h3><p id="webdriver" class="value"></p></div>
+        <div class="card"><h3>User agent</h3><p id="user-agent" class="value"></p><p class="note why">Sent with every request. The exact version string splits users into small groups.</p></div>
+        <div class="card"><h3>Platform</h3><p id="platform" class="value"></p><p class="note why">Your OS and CPU architecture, such as Apple Silicon versus Intel.</p></div>
+        <div class="card"><h3>Languages</h3><p id="languages" class="value"></p><p class="note why">An unusual set or order of languages is highly identifying.</p></div>
+        <div class="card"><h3>Do Not Track</h3><p id="dnt" class="value"></p><p class="note why">Most sites ignore this, and turning it on makes you slightly more distinctive.</p></div>
+        <div class="card"><h3>Cookies enabled</h3><p id="cookies" class="value"></p><p class="note why">Cookies are the classic tracker, but fingerprinting works even with them off.</p></div>
+        <div class="card"><h3>Hardware concurrency</h3><p id="cores" class="value"></p><p class="note why">Narrows down your CPU model and device class.</p></div>
+        <div class="card"><h3>Memory estimate</h3><p id="memory" class="value"></p><p class="note why">Rounded to limit precision, but still separates low-end from high-end devices.</p></div>
+        <div class="card"><h3>Touch support</h3><p id="touch" class="value"></p><p class="note why">Tells phones, tablets, and touchscreen laptops apart.</p></div>
+        <div class="card"><h3>WebDriver detected</h3><p id="webdriver" class="value"></p><p class="note why">Sites use this to spot bots and automated browsers.</p></div>
         <div class="card"><h3>Performance snapshot</h3><p id="performance" class="value">Measuring…</p><p class="note">Render + IP lookup timing based on this session.</p></div>
       </div>
     </section>
@@ -74,23 +80,23 @@
         <div class="card">
           <h3>Canvas fingerprint</h3>
           <canvas id="canvas-fp" width="200" height="40" style="display:block;margin-bottom:0.5rem;border-radius:4px;"></canvas>
-          <p id="canvas-hash" class="value">Computing…</p>
+          <p id="canvas-hash" class="value">Computing…</p><p class="note why">Your GPU, drivers, and fonts draw this image slightly differently from other machines.</p>
         </div>
-        <div class="card"><h3>WebGL fingerprint</h3><p id="webgl-info" class="value">Detecting…</p></div>
-        <div class="card"><h3>AudioContext fingerprint</h3><p id="audio-hash" class="value">Computing…</p></div>
-        <div class="card"><h3>Detected fonts</h3><p id="fonts" class="value">Scanning…</p></div>
-        <div class="card"><h3>Speech synthesis voices</h3><p id="voices" class="value">Checking…</p></div>
-        <div class="card"><h3>Navigator plugins</h3><p id="plugins" class="value">Checking…</p></div>
+        <div class="card"><h3>WebGL fingerprint</h3><p id="webgl-info" class="value">Detecting…</p><p class="note why">Names your graphics hardware, one of the most identifying signals there is.</p></div>
+        <div class="card"><h3>AudioContext fingerprint</h3><p id="audio-hash" class="value">Computing…</p><p class="note why">Tiny floating-point differences in audio processing vary by hardware and OS.</p></div>
+        <div class="card"><h3>Detected fonts</h3><p id="fonts" class="value">Scanning…</p><p class="note why">Installed fonts reflect your OS, apps, and languages. Detected by measuring text width.</p></div>
+        <div class="card"><h3>Speech synthesis voices</h3><p id="voices" class="value">Checking…</p><p class="note why">Text-to-speech voices reflect your OS version and installed language packs.</p></div>
+        <div class="card"><h3>Navigator plugins</h3><p id="plugins" class="value">Checking…</p><p class="note why">Once a top fingerprinting signal; modern browsers now hide it or report a fixed list.</p></div>
       </div>
     </section>
 
     <section>
       <h2>Screen &amp; rendering</h2>
       <div class="grid">
-        <div class="card"><h3>Screen resolution</h3><p id="screen" class="value"></p></div>
-        <div class="card"><h3>Viewport</h3><p id="viewport" class="value"></p></div>
-        <div class="card"><h3>Pixel ratio</h3><p id="pixel-ratio" class="value"></p></div>
-        <div class="card"><h3>Color depth</h3><p id="color-depth" class="value"></p></div>
+        <div class="card"><h3>Screen resolution</h3><p id="screen" class="value"></p><p class="note why">Together with pixel ratio, often pins down your exact monitor or device model.</p></div>
+        <div class="card"><h3>Viewport</h3><p id="viewport" class="value"></p><p class="note why">Changes as you resize, which helps link activity within a session.</p></div>
+        <div class="card"><h3>Pixel ratio</h3><p id="pixel-ratio" class="value"></p><p class="note why">Reveals HiDPI displays and your current zoom level.</p></div>
+        <div class="card"><h3>Color depth</h3><p id="color-depth" class="value"></p><p class="note why">Almost always 24-bit, so it adds little on its own.</p></div>
       </div>
     </section>
 
@@ -107,9 +113,16 @@
 
     <section>
       <h2>Location (browser API)</h2>
-      <p>This uses the browser's geolocation prompt when available.</p>
+      <p>Unlike everything above, precise location needs your permission. Click the button to see what a site gets if you allow it.</p>
       <div class="grid">
-        <div class="card"><h3>Status</h3><p id="geo-status" class="value">Waiting for permission…</p></div>
+        <div class="card card-action">
+          <div class="card-header">
+            <h3>Status</h3>
+            <button id="geo-run" type="button">Share location</button>
+          </div>
+          <p id="geo-status" class="value">Not requested.</p>
+          <p class="note">Opt-in test; coordinates stay in your browser.</p>
+        </div>
         <div class="card"><h3>Coordinates</h3><p id="geo-coords" class="value">—</p></div>
         <div class="card"><h3>Accuracy</h3><p id="geo-accuracy" class="value">—</p></div>
         <div class="card"><h3>Altitude</h3><p id="geo-altitude" class="value">—</p></div>
@@ -119,10 +132,10 @@
     <section>
       <h2>Time &amp; environment</h2>
       <div class="grid">
-        <div class="card"><h3>Local time</h3><p id="local-time" class="value"></p></div>
-        <div class="card"><h3>Timezone</h3><p id="timezone" class="value"></p></div>
-        <div class="card"><h3>Referrer</h3><p id="referrer" class="value"></p></div>
-        <div class="card"><h3>Page URL</h3><p id="page-url" class="value"></p></div>
+        <div class="card"><h3>Local time</h3><p id="local-time" class="value"></p><p class="note why">Any script can read your clock.</p></div>
+        <div class="card"><h3>Timezone</h3><p id="timezone" class="value"></p><p class="note why">Can contradict a VPN's location and reveal where you really are.</p></div>
+        <div class="card"><h3>Referrer</h3><p id="referrer" class="value"></p><p class="note why">Tells sites which page sent you here.</p></div>
+        <div class="card"><h3>Page URL</h3><p id="page-url" class="value"></p><p class="note why">Includes any tracking parameters (utm_*, fbclid) added to the link you clicked.</p></div>
       </div>
     </section>
 
@@ -139,17 +152,17 @@
     <section>
       <h2>Device capabilities</h2>
       <div class="grid">
-        <div class="card"><h3>Media devices</h3><p id="media-devices" class="value">Checking…</p></div>
-        <div class="card"><h3>Storage estimate</h3><p id="storage-estimate" class="value">Checking…</p></div>
-        <div class="card"><h3>Permissions status</h3><p id="permissions" class="value">Checking…</p></div>
+        <div class="card"><h3>Media devices</h3><p id="media-devices" class="value">Checking…</p><p class="note why">Counts your cameras, mics, and speakers without asking. Device names need permission.</p></div>
+        <div class="card"><h3>Storage estimate</h3><p id="storage-estimate" class="value">Checking…</p><p class="note why">The quota depends on disk size and free space, which vary between machines.</p></div>
+        <div class="card"><h3>Permissions status</h3><p id="permissions" class="value">Checking…</p><p class="note why">Shows which permissions you have already granted or denied this site.</p></div>
       </div>
     </section>
 
     <section>
       <h2>Network &amp; battery (experimental)</h2>
       <div class="grid">
-        <div class="card"><h3>Connection</h3><p id="connection" class="value"></p></div>
-        <div class="card"><h3>Battery</h3><p id="battery" class="value">Checking…</p></div>
+        <div class="card"><h3>Connection</h3><p id="connection" class="value"></p><p class="note why">Hints at whether you're on mobile data or broadband.</p></div>
+        <div class="card"><h3>Battery</h3><p id="battery" class="value">Checking…</p><p class="note why">Firefox and Safari removed this API after it was used for tracking; Chromium still exposes it.</p></div>
       </div>
       <p class="note">Some browsers block these APIs or provide partial data for privacy.</p>
     </section>
@@ -171,7 +184,7 @@
       <h2 id="privacy-tips-heading">Privacy tips &amp; mitigations</h2>
       <ul class="tips-list">
         <li>Use a trusted VPN or privacy proxy to mask your IP, ASN, and geolocation.</li>
-        <li>Disable third-party cookies and limit cross-site tracking protections in your browser settings.</li>
+        <li>Block third-party cookies and turn on cross-site tracking protection in your browser settings.</li>
         <li>Turn off WebRTC or restrict local IP sharing in your browser to reduce leak surface.</li>
         <li>Use privacy-focused extensions that block fingerprinting scripts and limit hardware disclosures.</li>
         <li>Use Tor Browser to resist canvas, WebGL, and AudioContext fingerprinting — it normalizes these outputs.</li>

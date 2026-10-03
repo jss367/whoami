@@ -133,6 +133,50 @@ button:disabled {
   box-shadow: none;
 }
 
+.note.why {
+  margin: 0.6rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.list-all {
+  margin-top: 0.4rem;
+}
+
+.list-all summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.list-all .value {
+  margin-top: 0.4rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.headline {
+  background: linear-gradient(135deg, rgba(77, 208, 225, 0.12), rgba(77, 208, 225, 0.02));
+  border: 1px solid rgba(77, 208, 225, 0.35);
+  border-radius: 16px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.headline p {
+  margin: 0 0 0.75rem;
+}
+
+.facts-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
 .tips-list {
   margin: 0.25rem 0 0;
   color: var(--text);
